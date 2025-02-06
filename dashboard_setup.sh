@@ -9,7 +9,6 @@ function print_message {
 
 # Cloning the application repository
 print_message "Cloning NetworkControllerDashboard Repository..."
-# Ensure git is installed
 sudo apt-get install -y git
 git clone https://github.com/BiCKKK/NetworkControllerDashboard.git
 print_message "Repository cloned successfully!"
@@ -19,41 +18,32 @@ print_message "Installing System Dependencies..."
 print_message "Installing tools required for compiling BPFabric..."
 sudo apt-get install -y gcc-multilib protobuf-c-compiler protobuf-compiler libprotobuf-dev python3-protobuf python3-twisted clang python3-venv
 
+# Install DPDK
 print_message "Installing DPDK (Data Plane Development Kit)..."
-# Check if DPDK is already installed.
-# Here we assume that if the dpdk-devbind.py tool exists in /usr/local/bin, DPDK is installed.
 if [ -f "/usr/local/bin/dpdk-devbind.py" ]; then
     print_message "DPDK appears to be already installed. Skipping DPDK installation."
 else
     print_message "DPDK not found. Proceeding with download and installation..."
-    
-    # Install required build dependencies for DPDK
     sudo apt-get install -y build-essential meson ninja-build libnuma-dev pkg-config python3-pyelftools
-    
-    # Download the DPDK tarball (adjust the version as needed)
+    # Adjust the version as needed
     DPDK_VERSION="24.11.1"
     wget https://fast.dpdk.org/rel/dpdk-${DPDK_VERSION}.tar.xz
     tar xf dpdk-${DPDK_VERSION}.tar.xz
     cd dpdk-stable-${DPDK_VERSION}
-    
-    # Build DPDK using Meson and Ninja
     meson setup build
     ninja -C build
     sudo ninja -C build install
-    
-    # Optionally, update library cache if required
     sudo ldconfig
     
     cd ..
     print_message "DPDK installed successfully!"
-    sudo rm -rf dpdk-${DPDK_VERSION}.tar.xz
-    sudo rm -rf dpdk-stable-${DPDK_VERSION}
+    sudo rm -rf dpdk-${DPDK_VERSION}.tar.xz dpdk-stable-${DPDK_VERSION}
 fi
 
-
+# Setup pgAdmin
 print_message "Setting up pgAdmin4 for inspecting PostgreSQL database operations..."
 if dpkg -s pgadmin4-desktop >/dev/null 2>&1; then
-    print_message "pgAdmin-desktop already installed. Skepping installation."
+    print_message "pgAdmin-desktop already installed. Skipping installation."
 else
     curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
     sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
@@ -97,7 +87,6 @@ print_message "Database Configuration Updated!"
 
 # Build the react frontend
 print_message "Setting up the React Frontend..."
-# Change into frontend directory
 cd NetworkControllerDashboard/frontend
 npm install
 # npm run build [THIS IS FOR PRODUCTION ENVIRONMENT]
@@ -109,6 +98,7 @@ print_message "Setting up the Flask Backend..."
 cd backend
 print_message "Compiling the backend..."
 make
+
 # Create a virtual environment for python backend operations (if not already present)
 if [ ! -d "venv" ]; then
     print_message "Creating Python Vitual Environment for Backend..."
@@ -126,7 +116,17 @@ fi
 # Run database migration
 print_message "Running Database migrations..."
 source venv/bin/activate
+
+# Re-export environment variables
+export PG_HOST='$PGHOST'
+export PG_DATABASE='$PGDATABASE'
+export PG_USER='$PGUSER'
+export PG_PASSWORD='$PGPASSWORD'
+export DATABASE_URL="postgresql+psycopg://$PGUSER:$PGPASSWORD@$PGHOST:5432/$PGDATABASE"
 export FLASK_APP=manage.py
+
+echo "DATABASE_URL: $DATABASE_URL"
+
 flask db init
 flask db migrate -m "Models created"
 flask db upgrade
@@ -138,7 +138,7 @@ print_message "Setup Complete!"
 echo ""
 print_message "To start your applications, use the following commands:"
 echo "1. Open three terminals"
-echo "2. In first terminal, run cd NetworkControllerDashboard/backend/controller | ../venv/bin/python app.py"
-echo "3. In second terminal, run cd NetworkControllerDashboard/backend/topologies | ../venv/bin/python app.py"
-echo "4. In third terminal, run cd NetworkControllerDashboard/frontend | npm run dev"
+echo "2. In first terminal, run cd NetworkControllerDashboard/backend/controller && ../venv/bin/python app.py"
+echo "3. In second terminal, run cd NetworkControllerDashboard/backend/topologies && ../venv/bin/python app.py"
+echo "4. In third terminal, run cd NetworkControllerDashboard/frontend && npm run dev"
 echo "5. Click the link that will pop up in the third terminal"
