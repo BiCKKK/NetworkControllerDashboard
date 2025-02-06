@@ -18,13 +18,48 @@ print_message "Repository cloned successfully!"
 print_message "Installing System Dependencies..."
 print_message "Installing tools required for compiling BPFabric..."
 sudo apt-get install -y gcc-multilib protobuf-c-compiler protobuf-compiler libprotobuf-dev python3-protobuf python3-twisted clang python3-venv
+
 # If dpdk will be needed, some needed tools: build-essential meson ninja-build libnuma-dev pkg-config
+# print_message "Installing DPDK (Data Plane Development Kit)..."
+
+# Check if DPDK is already installed.
+# Here we assume that if the dpdk-devbind.py tool exists in /usr/local/bin, DPDK is installed.
+# if [ -f "/usr/local/bin/dpdk-devbind.py" ]; then
+#     print_message "DPDK appears to be already installed. Skipping DPDK installation."
+# else
+#     print_message "DPDK not found. Proceeding with download and installation..."
+    
+#     # Install required build dependencies for DPDK
+#     sudo apt-get install -y build-essential meson ninja-build libnuma-dev pkg-config
+    
+#     # Download the DPDK tarball (adjust the version as needed)
+#     DPDK_VERSION="25.03"
+#     wget https://fast.dpdk.org/rel/dpdk-${DPDK_VERSION}.tar.xz
+#     tar xf dpdk-${DPDK_VERSION}.tar.xz
+#     cd dpdk-${DPDK_VERSION}
+    
+#     # Build DPDK using Meson and Ninja
+#     meson setup build
+#     ninja -C build
+#     sudo ninja -C build install
+    
+#     # Optionally, update library cache if required
+#     sudo ldconfig
+    
+#     cd ..
+#     print_message "DPDK installed successfully!"
+# fi
+
 
 print_message "Setting up pgAdmin4 for inspecting PostgreSQL database operations..."
-curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
-sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
-sudo apt-get update
-sudo apt install -y pgadmin4-desktop
+if dpkg -s pgadmin4-desktop >/dev/null 2>&1; then
+    print_message "pgAdmin-desktop already installed. Skepping installation."
+else
+    curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
+    sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
+    sudo apt-get update
+    sudo apt install -y pgadmin4-desktop
+fi
 
 print_message "Installing Nodejs and npm..."
 sudo apt-get install -y nodejs npm
