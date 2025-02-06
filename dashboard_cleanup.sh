@@ -54,24 +54,6 @@ else
     print_message "Repository '$REPO_DIR' not found; skipping removal."
 fi
 
-###############################################################################
-# Step 4: Remove the Global Virtual Environment for the Backend
-###############################################################################
-print_message "Step 4: Removing the global Python virtual environment for the backend..."
-
-# In your new structure, the global venv is located in NetworkControllerDashboard/backend/venv
-BACKEND_VENV="NetworkControllerDashboard/backend/venv"
-if [ -d "$BACKEND_VENV" ]; then
-    rm -rf "$BACKEND_VENV"
-    print_message "Global virtual environment in '$BACKEND_VENV' has been removed."
-else
-    print_message "Global virtual environment not found in '$BACKEND_VENV'; skipping."
-fi
-
-
-###############################################################################
-# Final Step: Inform the User of Completion
-###############################################################################
 print_message "Cleanup complete! Your environment has been reset."
 echo "You can now run the dashboard_setup.sh script again for testing."
 
