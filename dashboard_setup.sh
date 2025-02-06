@@ -12,7 +12,7 @@ print_message "Cloning NetworkControllerDashboard Repository..."
 # Ensure git is installed
 sudo apt-get install -y git
 git clone https://github.com/BiCKKK/NetworkControllerDashboard.git
-print_message {Repository cloned successfully!}
+print_message "Repository cloned successfully!"
 
 # Downloading dependencies and supporting tools
 print_message "Installing System Dependencies..."
