@@ -19,24 +19,22 @@ print_message "Installing System Dependencies..."
 print_message "Installing tools required for compiling BPFabric..."
 sudo apt-get install -y gcc-multilib protobuf-c-compiler protobuf-compiler libprotobuf-dev python3-protobuf python3-twisted clang python3-venv
 
-# If dpdk will be needed, some needed tools: build-essential meson ninja-build libnuma-dev pkg-config
-# print_message "Installing DPDK (Data Plane Development Kit)..."
-
+print_message "Installing DPDK (Data Plane Development Kit)..."
 # Check if DPDK is already installed.
-# Here we assume that if the dpdk-devbind.py tool exists in /usr/bin, DPDK is installed.
-if [ -f "/usr/bin/dpdk-devbind.py" ]; then
+# Here we assume that if the dpdk-devbind.py tool exists in /usr/local/bin, DPDK is installed.
+if [ -f "/usr/local/bin/dpdk-devbind.py" ]; then
     print_message "DPDK appears to be already installed. Skipping DPDK installation."
 else
     print_message "DPDK not found. Proceeding with download and installation..."
     
     # Install required build dependencies for DPDK
-    sudo apt-get install -y build-essential meson ninja-build libnuma-dev pkg-config
+    sudo apt-get install -y build-essential meson ninja-build libnuma-dev pkg-config python3-pyelftools
     
     # Download the DPDK tarball (adjust the version as needed)
-    DPDK_VERSION="25.03"
+    DPDK_VERSION="24.11.1"
     wget https://fast.dpdk.org/rel/dpdk-${DPDK_VERSION}.tar.xz
     tar xf dpdk-${DPDK_VERSION}.tar.xz
-    cd dpdk-${DPDK_VERSION}
+    cd dpdk-stable-${DPDK_VERSION}
     
     # Build DPDK using Meson and Ninja
     meson setup build
@@ -48,6 +46,8 @@ else
     
     cd ..
     print_message "DPDK installed successfully!"
+    sudo rm -rf dpdk-${DPDK_VERSION}.tar.xz
+    sudo rm -rf dpdk-stable-${DPDK_VERSION}
 fi
 
 
