@@ -67,7 +67,7 @@ read -p "Enter PostgreSQL host (default: localhost): " PGHOST
 PGHOST=${PGHOST:-localhost}
 read -p "Enter PostgreSQL database name: " PGDATABASE
 read -p "Enter PostgreSQL username: " PGUSER
-read -sp "Enter PostgreSQL passowrd: " PGPASSWORD
+read -sp "Enter PostgreSQL password: " PGPASSWORD
 echo ""
 
 print_message "Creating PostgreSQL Database..."
