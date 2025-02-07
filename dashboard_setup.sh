@@ -16,7 +16,7 @@ print_message "Repository cloned successfully!"
 # Downloading dependencies and supporting tools
 print_message "Installing System Dependencies..."
 print_message "Installing tools required for compiling BPFabric..."
-sudo apt-get install -y gcc-multilib protobuf-c-compiler protobuf-compiler libprotobuf-dev python3-protobuf python3-twisted clang python3-venv
+sudo apt-get install -y gcc-multilib protobuf-c-compiler protobuf-compiler libprotobuf-dev libprotobuf-c-dev python3-protobuf python3-twisted clang python3-venv mininet
 
 # Install DPDK
 print_message "Installing DPDK (Data Plane Development Kit)..."
@@ -142,6 +142,6 @@ echo ""
 print_message "To start your applications, use the following commands:"
 echo "1. Open three terminals"
 echo "2. In first terminal, run cd NetworkControllerDashboard/backend/controller && ../venv/bin/python app.py"
-echo "3. In second terminal, run cd NetworkControllerDashboard/backend/topologies && ../venv/bin/python app.py"
+echo "3. In second terminal, run cd NetworkControllerDashboard/backend/topologies && sudo ../venv/bin/python app.py"
 echo "4. In third terminal, run cd NetworkControllerDashboard/frontend && npm run dev"
 echo "5. Click the link that will pop up in the third terminal, and the dashboard is up and running"

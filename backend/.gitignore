@@ -29,6 +29,7 @@ ipkg-*
 .quilt_checked
 .source_dir
 
+.env
 /venv/
 
 /migrations/
