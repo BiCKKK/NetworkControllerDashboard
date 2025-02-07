@@ -48,7 +48,7 @@ print_message "Step 3: Removing the cloned repository..."
 # Assuming the repository was cloned into the current directory
 REPO_DIR="NetworkControllerDashboard"
 if [ -d "$REPO_DIR" ]; then
-    rm -rf "$REPO_DIR"
+    sudo rm -rf "$REPO_DIR"
     print_message "Repository '$REPO_DIR' has been removed."
 else
     print_message "Repository '$REPO_DIR' not found; skipping removal."

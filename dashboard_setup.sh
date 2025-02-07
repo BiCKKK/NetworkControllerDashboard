@@ -71,8 +71,8 @@ read -sp "Enter PostgreSQL passowrd: " PGPASSWORD
 echo ""
 
 print_message "Creating PostgreSQL Database..."
-sudo -u postgres psql -c "CREATE USER $PGUSER WITH PASSWORD '$PGPASSWORD';" || true
-sudo -u postgres psql -c "CREATE DATABASE $PGDATABASE OWNER $PGUSER;" || true
+sudo -u postgres psql -c "CREATE USER $PGUSER WITH PASSWORD '$PGPASSWORD';" 
+sudo -u postgres psql -c "CREATE DATABASE $PGDATABASE OWNER $PGUSER;"
 print_message "PostgreSQL user and database setup complete."
 
 # Export environment variable so that flask application can use them
@@ -80,10 +80,21 @@ export PG_HOST="$PGHOST"
 export PG_DATABASE="$PGDATABASE"
 export PG_USER="$PGUSER"
 export PG_PASSWORD="$PGPASSWORD"
-# Also construct the DATABASE_URL environment variable
 export DATABASE_URL="postgresql+psycopg://$PGUSER:$PGPASSWORD@$PGHOST:5432/$PGDATABASE"
 print_message "Database Configuration Updated!"
 
+# Write the configuration to a .env file for use with python-dotenv
+cat <<EOF > .env
+# PosgreSQL configuration
+PG_HOST="$PGHOST"
+PG_DATABASE="$PGDATABASE"
+PG_USER="$PGUSER"
+PG_PASSWORD="$PGPASSWORD"
+DATABASE_URL="postgresql+psycopg://$PGUSER:$PGPASSWORD@$PGHOST:5432/$PGDATABASE"
+
+EOF
+
+print_message ".env file created successfully."
 
 # Build the react frontend
 print_message "Setting up the React Frontend..."
@@ -117,15 +128,7 @@ fi
 print_message "Running Database migrations..."
 source venv/bin/activate
 
-# Re-export environment variables
-export PG_HOST='$PGHOST'
-export PG_DATABASE='$PGDATABASE'
-export PG_USER='$PGUSER'
-export PG_PASSWORD='$PGPASSWORD'
-export DATABASE_URL="postgresql+psycopg://$PGUSER:$PGPASSWORD@$PGHOST:5432/$PGDATABASE"
 export FLASK_APP=manage.py
-
-echo "DATABASE_URL: $DATABASE_URL"
 
 flask db init
 flask db migrate -m "Models created"
@@ -141,4 +144,4 @@ echo "1. Open three terminals"
 echo "2. In first terminal, run cd NetworkControllerDashboard/backend/controller && ../venv/bin/python app.py"
 echo "3. In second terminal, run cd NetworkControllerDashboard/backend/topologies && ../venv/bin/python app.py"
 echo "4. In third terminal, run cd NetworkControllerDashboard/frontend && npm run dev"
-echo "5. Click the link that will pop up in the third terminal"
+echo "5. Click the link that will pop up in the third terminal, and the dashboard is up and running"
