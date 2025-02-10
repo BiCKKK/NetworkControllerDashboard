@@ -4,7 +4,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { Box, Toolbar } from "@mui/material";
 import SimulationCommands from "../common/SimulationCommandButton";
-import { useSelector, useDispatch } from "@reduxjs/toolkit";
+import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../slices/uiSlice";
 
 const MainLayout = ({ children }) => {

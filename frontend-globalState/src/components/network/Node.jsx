@@ -5,7 +5,7 @@ import ProgressBar from '../network/ProgressBar';
 import AssetDiscoveryTooltip from './AssetDiscoveryTooltip';
 
 // Node component represents each node in the network topology visualisation.
-const Node = ({ data }) => {
+const Node = ({ data, style }) => {
     const [showTooltip, setShowTooltip] = useState(false);
 
     // Determine if the node is a switch or has the Asset Discovery function installed.
@@ -15,23 +15,15 @@ const Node = ({ data }) => {
     );
 
     // Define the styling of the node based on its connection status.
-    const nodeStyle = {
+    const nodeStyle = style || {
         padding: '10px',
         background: '#f9f9f9',
         borderRadius: '8px',
-        border: data.status === 'connected' ? '2px solid green' : '1px solid #ccc',
         textAlign: 'center',
         minWidth: '120px',
         minHeight: '120px',
         position: 'relative',
-        opacity: data.status === 'connected' ? 1 : 0.5,
     };
-
-    if (data.status === 'connected') {
-        nodeStyle.border = '2px solid green';
-    } else {
-        nodeStyle.opacity = 0.5;
-    }
 
     // Handle drag-over events to enable dropping functions onto the node.
     const handleDragOver = (event) => {
@@ -50,7 +42,11 @@ const Node = ({ data }) => {
     };
 
     return ( 
-        <div onDragOver={handleDragOver} onDrop={handleDrop} style={nodeStyle} data-id={data.label}
+        <div 
+            onDragOver={handleDragOver} 
+            onDrop={handleDrop}
+            style={nodeStyle} 
+            data-id={data.label}
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}> 
             {data.image && ( 

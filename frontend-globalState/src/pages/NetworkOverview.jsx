@@ -1,10 +1,20 @@
 import { Box, Button, Grid, Paper, Typography, TextField, MenuItem } from "@mui/material";
-import React, { useMemo, useCallback, useEffect, useState } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 import NetworkTopology from "../components/network/NetworkTopology";
 import axios from "axios";
 import "@xyflow/react/dist/style.css"; 
 import { networkFunctions } from "../function_colours";
 import { CartesianGrid, LineChart, XAxis, YAxis, Tooltip as RechartsToolTip, Legend, Line, ResponsiveContainer } from "recharts";
+import { useSelector, useDispatch } from "react-redux";
+import {
+    setNodeCount,
+    setActiveNodeCount,
+    setNodes,
+    setEdges,
+    setSimulationRunning,
+    setSimulationStatus, 
+    setNetworkConnected,
+} from "../slices/networkSlice";
 
 // Prefedined positions for devices on the network topology map
 const devicePositions = {
@@ -51,28 +61,28 @@ const deviceImages = {
 };
 
 const NetworkOverview = () => {
-    // State variables for network and simulation status
-    const [isNetworkConnected, setIsNetworkConnected] = useState(false); // Tracks eBPF controller status
-    const [nodeCount, setNodeCount] = useState(0); // Total nodes in the network 
-    const [activeNodeCount, setActiveNodeCount] = useState(0); // Active nodes in the network
-    const [isSimulationRunning, setIsSimulationRunning] = useState(false); // Mininet simulation status
-    const [simulationStatus, setSimulationStatus] = useState(""); // Display status messages for simulation
-    const [nodes, setNodes] = useState([]); // Node data for the topology visualisation
-    const [edges, setEdges] = useState([]); // Edge data for the topology visualisation
-    const [selectedNode, setSelectedNode] = useState(""); // Currently selected node for traffic monitoring
-    const [trafficData, setTrafficData] = useState([]); // Traffic data for the selected node
-    const [lastUpdate, setLastUpdate] = useState(Date.now()); // Timestamp for the last update of traffic data
+    const dispatch = useDispatch();
+
+    const {
+        isNetworkConnected,
+        isSimulationRunning,
+        simulationStatus,
+        nodeCount,
+        activeNodeCount,
+        nodes,
+        edges,
+    } = useSelector((state) => state.network);
 
     // Fetches node counts (total and active) from the backend
     const fetchNodeCounts = useCallback(async () => {
         try {
             const response = await axios.get('http://localhost:5050/api/node_counts');
-            setNodeCount(response.data.node_count);
-            setActiveNodeCount(response.data.active_node_count);
+            dispatch(setNodeCount(response.data.node_count));
+            dispatch(setActiveNodeCount(response.data.active_node_count));
         } catch (error) {
             console.error("Error fetching node counts:", error);
         }
-    }, []);
+    }, [dispatch]);
 
     // Fetches topology data (nodes and links) from the backend
     const fetchTopologyData = useCallback(async () => {
@@ -124,7 +134,7 @@ const NetworkOverview = () => {
                         onRemoveFunction: (slotIndex) => handleRemoveFunction(device.name, slotIndex, device.dpid),
                         isActive: isSimulationRunning && isNetworkConnected && device.device_type === 'switch' && status === 'connected'
                     },
-                    style: nodeStyle
+                    style: nodeStyle,
                 };
             });
 
@@ -391,15 +401,15 @@ const NetworkOverview = () => {
                     };
                 }
                 return null;
-            }).filter((edge) => edge !== null);
+            }).filter((edge) => edge != null);
             
-            setNodes(mappedNodes);
-            setEdges(mappedEdges);
+            dispatch(setNodes(mappedNodes));
+            dispatch(setEdges(mappedEdges));
 
         } catch (error) {
             console.error('Error fetching topology data:', error);
         }
-    }, [isSimulationRunning, isNetworkConnected]);
+    }, [dispatch, isSimulationRunning, isNetworkConnected]);
 
     // Automatically fetch data and update the UI when simulation and network status change
     useEffect(() => {
@@ -423,105 +433,105 @@ const NetworkOverview = () => {
         if (isSimulationRunning) {
             try {
                 await axios.post('http://localhost:5100/api/stop_sim');
-                setIsSimulationRunning(false);
-                setSimulationStatus("Simulation Stopped.");
+                dispatch(setSimulationRunning(false));
+                dispatch(setSimulationStatus("Simulation Stopped."));
                 setTimeout(() => {
                     fetchNodeCounts();
                     fetchTopologyData();
                 }, 5000);
             } catch (error) {
                 console.error("Error stopping simulation:", error);
-                setSimulationStatus("Failed to stop simulation.");
+                dispatch(setSimulationStatus("Failed to stop simulation."));
             }
         } else {
             try {
                 await axios.post('http://localhost:5100/api/start_sim');
-                setIsSimulationRunning(true);
-                setSimulationStatus("Simulation Started.");
+                dispatch(setSimulationRunning(true));
+                dispatch(setSimulationStatus("Simulation Started."));
                 setTimeout(() => { 
                     fetchNodeCounts(); 
                     fetchTopologyData(); 
                 }, 5000);
             } catch (error) {
                 console.error("Error starting simulation:", error);
-                setSimulationStatus("Failed to start the simulation.")
+                dispatch(setSimulationStatus("Failed to start the simulation."));
             }
         }
-    }, [isSimulationRunning, fetchNodeCounts, fetchTopologyData]);
+    }, [dispatch, isSimulationRunning, fetchNodeCounts, fetchTopologyData]);
 
     // Handler for connecting/disconnecting eBPF controller
     const toggleNetworkConnection = useCallback(async () => {
         if (isNetworkConnected) {
             try {
                 await axios.post('http://localhost:5050/api/stop');
-                setIsNetworkConnected(false);
+                dispatch(setNetworkConnected(false));
             } catch (error) {
                 console.error("Error stopping controller:", error);
             }
         } else {
             try {
                 await axios.post('http://localhost:5050/api/start');
-                setIsNetworkConnected(true);
+                dispatch(setNetworkConnected(true));
             } catch (error) {
                 console.error("Error starting controller:", error);
             }
         }
-    }, [isNetworkConnected]);
+    }, [dispatch, isNetworkConnected]);
 
     // GRAPH COMPONENT NEEDS WORK!
     // Colour used for the traffic graph lines
-    const graphColor = "#8884d8";
+    // const graphColor = "#8884d8";
 
     // Function to fetch traffic data for the selected node
-    const fetchTrafficData = useCallback(async () => {
-        if (!selectedNode) return;
+    // const fetchTrafficData = useCallback(async () => {
+    //     if (!selectedNode) return;
         
-        try {
+    //     try {
             // API call to fetch monitoring data for the selected node
-            const response = await axios.get('http://localhost:5050/api/monitoring_data', {
-                params: {
-                   device_id: selectedNode, //ID of the selected node
-                   limit: 60, // Fetch the latest 60 data points
-               },
-            });
+            // const response = await axios.get('http://localhost:5050/api/monitoring_data', {
+            //     params: {
+            //        device_id: selectedNode, //ID of the selected node
+            //        limit: 60, // Fetch the latest 60 data points
+            //    },
+            // });
 
             // Format the received data into a structured suitable for the graph
-            const formattedData = response.data.map((point) => ({
-               timestamp: new Date(point.timestamp).getTime(),
-               bandwidth: point.bandwidth,
-            }));
+            // const formattedData = response.data.map((point) => ({
+            //    timestamp: new Date(point.timestamp).getTime(),
+            //    bandwidth: point.bandwidth,
+            // }));
 
 
-           setTrafficData(formattedData);
-           setLastUpdate(Date.now());
-        } catch (error) {
-           console.error("Error fetching traffic data:", error);
-        }
-    }, [selectedNode]);
+    //        setTrafficData(formattedData);
+    //        setLastUpdate(Date.now());
+    //     } catch (error) {
+    //        console.error("Error fetching traffic data:", error);
+    //     }
+    // }, [selectedNode]);
 
     // useEffect hook to periodically fetch traffic data for the selected node
-    useEffect(() => {
-        let intervalId;
+    // useEffect(() => {
+    //     let intervalId;
         
         // Fetch data only if the simulation is running, the network is connected, and a node is selected
-        if (isSimulationRunning && isNetworkConnected && selectedNode) {
-           fetchTrafficData();
-           intervalId = setInterval(fetchTrafficData, 1000);
-        }
-        return () => {
-            if (intervalId) clearInterval(intervalId);
-        };
-    }, [isSimulationRunning, isNetworkConnected, selectedNode, fetchTrafficData]); // Dependencies to re-run the effect
+    //     if (isSimulationRunning && isNetworkConnected && selectedNode) {
+    //        fetchTrafficData();
+    //        intervalId = setInterval(fetchTrafficData, 1000);
+    //     }
+    //     return () => {
+    //         if (intervalId) clearInterval(intervalId);
+    //     };
+    // }, [isSimulationRunning, isNetworkConnected, selectedNode, fetchTrafficData]); // Dependencies to re-run the effect
 
     // Filter nodes to only include switches and map them to a format suitable for dropdown options
-    const nodeOptions = useMemo(() => {
-        return nodes
-            .filter((node) => node.data.deviceType === 'switch') 
-            .map((node) => ({
-            value: node.data.dpid, 
-            label: node.data.label,
-            }));
-    }, [nodes]);
+    // const nodeOptions = useMemo(() => {
+    //     return nodes
+    //         .filter((node) => node.data.deviceType === 'switch') 
+    //         .map((node) => ({
+    //         value: node.data.dpid, 
+    //         label: node.data.label,
+    //         }));
+    // }, [nodes]);
     
     // Function to install a network function on a node
     const handleFunctionInstall = useCallback(
@@ -708,8 +718,7 @@ const NetworkOverview = () => {
                 </Grid>
             </Grid>
 
-            <Grid container spacing={3} mt={0} mx={0}>
-                {/*Node selection dropdown menu*/}
+            {/* <Grid container spacing={3} mt={0} mx={0}>
                 <Grid item xs={12}>
                     <Paper elevation={3} sx={{ p: 3 }}>
                         <Grid container spacing={3}>
@@ -737,7 +746,6 @@ const NetworkOverview = () => {
                 </Grid>
 
                 <Grid  item xs={12}>
-                    {/*Network Traffic Graph*/}
                     <Paper elevation={3} sx={{ p: 3, height: "400px" }}>
                         <Typography variant="h6">Network Traffic Graph</Typography>
                         <Box
@@ -793,8 +801,8 @@ const NetworkOverview = () => {
                             )}
                         </Box>
                     </Paper>
-                </Grid>
-            </Grid>
+                </Grid> 
+            </Grid> */}
         </Grid>
     );
 };
