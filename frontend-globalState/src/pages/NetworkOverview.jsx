@@ -129,8 +129,6 @@ const NetworkOverview = () => {
                         status,
                         dpid: device.dpid,
                         functionsInstalled,
-                        // onFunctionInstall: (functionData) => handleFunctionInstall(device.name, functionData, device.dpid),
-                        // onRemoveFunction: (slotIndex) => handleRemoveFunction(device.name, slotIndex, device.dpid),
                         isActive: isSimulationRunning && isNetworkConnected && device.device_type === 'switch' && status === 'connected'
                     },
                     style: nodeStyle,
@@ -476,61 +474,6 @@ const NetworkOverview = () => {
             }
         }
     }, [dispatch, isNetworkConnected]);
-
-    // GRAPH COMPONENT NEEDS WORK!
-    // Colour used for the traffic graph lines
-    // const graphColor = "#8884d8";
-
-    // Function to fetch traffic data for the selected node
-    // const fetchTrafficData = useCallback(async () => {
-    //     if (!selectedNode) return;
-        
-    //     try {
-            // API call to fetch monitoring data for the selected node
-            // const response = await axios.get('http://localhost:5050/api/monitoring_data', {
-            //     params: {
-            //        device_id: selectedNode, //ID of the selected node
-            //        limit: 60, // Fetch the latest 60 data points
-            //    },
-            // });
-
-            // Format the received data into a structured suitable for the graph
-            // const formattedData = response.data.map((point) => ({
-            //    timestamp: new Date(point.timestamp).getTime(),
-            //    bandwidth: point.bandwidth,
-            // }));
-
-
-    //        setTrafficData(formattedData);
-    //        setLastUpdate(Date.now());
-    //     } catch (error) {
-    //        console.error("Error fetching traffic data:", error);
-    //     }
-    // }, [selectedNode]);
-
-    // useEffect hook to periodically fetch traffic data for the selected node
-    // useEffect(() => {
-    //     let intervalId;
-        
-        // Fetch data only if the simulation is running, the network is connected, and a node is selected
-    //     if (isSimulationRunning && isNetworkConnected && selectedNode) {
-    //        fetchTrafficData();
-    //        intervalId = setInterval(fetchTrafficData, 1000);
-    //     }
-    //     return () => {
-    //         if (intervalId) clearInterval(intervalId);
-    //     };
-    // }, [isSimulationRunning, isNetworkConnected, selectedNode, fetchTrafficData]); // Dependencies to re-run the effect
-
-    // Filter nodes to only include switches and map them to a format suitable for dropdown options
-    // const nodeOptions = useMemo(() => {
-    //     return nodes
-    //         .filter((node) => node.data.deviceType === 'switch') 
-    //         .map((node) => ({
-    //         value: node.data.dpid, 
-    //         label: node.data.label,
-    //         }));
-    // }, [nodes]);
     
     // Function to install a network function on a node
     const handleFunctionInstall = useCallback(
@@ -563,22 +506,6 @@ const NetworkOverview = () => {
                 function_index: slotIndex,
             })
             .then((response) => {
-                // setNodes((prevNodes) =>
-                //     prevNodes.map((node) => {
-                //         if (node.id === nodeName) {
-                //             const updatedFunctions = [...node.data.functionsInstalled];
-                //             updatedFunctions.splice(slotIndex, 1);
-                //             return {
-                //                 ...node,
-                //                 data: {
-                //                     ...node.data,
-                //                     functionsInstalled: updatedFunctions,
-                //                 },
-                //             };
-                //         }
-                //         return node;
-                //     })
-                // );
                 fetchTopologyData();
             })
             .catch(error => {
@@ -723,99 +650,11 @@ const NetworkOverview = () => {
                             <NetworkTopology
                                 nodes={nodesWithCallbacks}
                                 edges={edges} 
-                                // isSimulationRunning={isSimulationRunning}
-                                // isNetworkConnected={isNetworkConnected}
                             />
                         </Box>
                     </Paper>
                 </Grid>
             </Grid>
-
-            {/* <Grid container spacing={3} mt={0} mx={0}>
-                <Grid item xs={12}>
-                    <Paper elevation={3} sx={{ p: 3 }}>
-                        <Grid container spacing={3}>
-                            <Grid item xs={12}>
-                                <TextField
-                                    select
-                                    fullWidth
-                                    label="Select Node to Monitor"
-                                    value={selectedNode}
-                                    onChange={(e) => setSelectedNode(e.target.value)}
-                                    disabled={!isSimulationRunning || !isNetworkConnected}
-                                >
-                                    <MenuItem value="">
-                                        <em>Select a node</em>
-                                    </MenuItem>
-                                    {nodeOptions.map((node) => (
-                                        <MenuItem key={node.value} value={node.value}>
-                                            {node.label}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                        </Grid>
-                    </Paper>
-                </Grid>
-
-                <Grid  item xs={12}>
-                    <Paper elevation={3} sx={{ p: 3, height: "400px" }}>
-                        <Typography variant="h6">Network Traffic Graph</Typography>
-                        <Box
-                            sx={{
-                                mt: 2,
-                                height: "90%",
-                                backgroundColor: "#f5f5f5",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                            }}
-                        >
-                            {!selectedNode ? (
-                                <Typography variant="body1" color="textSecondary">
-                                    Select a node to view its traffic data
-                                </Typography>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trafficData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis
-                                            dataKey="timestamp"
-                                            type="number"
-                                            domain={['auto', 'auto']}
-                                            tickFormatter={(timestamp) =>
-                                                new Date(timestamp).toLocaleTimeString()
-                                            }
-                                        />
-                                        <YAxis
-                                            label={{
-                                                value: 'Bandwidth (bytes/s)',
-                                                angle: -90,
-                                                position: 'insideLeft',
-                                                style: { textAnchor: 'middle' }
-                                            }}
-                                        />
-                                        <RechartsToolTip
-                                            labelFormatter={(timestamp) =>
-                                                new Date(timestamp).toLocaleTimeString()
-                                            }
-                                            formatter={(value) => [`${value} bytes/s`, 'Bandwidth']}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="bandwidth"
-                                            stroke={graphColor}
-                                            dot={false}
-                                            name="Bandwidth"
-                                            isAnimationActive={false} 
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            )}
-                        </Box>
-                    </Paper>
-                </Grid> 
-            </Grid> */}
         </Grid>
     );
 };

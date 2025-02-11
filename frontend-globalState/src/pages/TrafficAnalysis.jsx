@@ -1,96 +1,142 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
-import { Box, Grid, Paper, Typography, MenuItem, TextField } from '@mui/material';
-import axios from 'axios';
-import { CartesianGrid, LineChart, XAxis, YAxis, Tooltip as RechartsTootip, Line, ResponsiveContainer } from 'recharts';
-import { useSelector, useDispatch } from 'react-redux';
-import { setSelectedNode, setTimeRange, setTrafficData } from '../slices/trafficSlice';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    Box,
+    Grid,
+    Paper,
+    Typography,
+    MenuItem,
+    TextField,
+} from "@mui/material";
+import ReactApexChart from "react-apexcharts"; 
+import axios from "axios";
+import { useSelector, useDispatch } from "react-redux";
+import { setSelectedNode, setTimeRange, setTrafficData } from "../slices/trafficSlice";
+
+// Sample options for IP address and protocol filters
+const ipOptions = [
+    { label: "192.168.1.1", value: "192.168.1.1" },
+    { label: "10.0.0.1", value: "10.0.0.1" },
+    { label: "172.16.0.1", value: "172.16.0.1" },
+];
+  
+const protocolOptions = [
+    { label: "HTTP", value: "HTTP" },
+    { label: "HTTPS", value: "HTTPS" },
+    { label: "TCP", value: "TCP" },
+    { label: "UDP", value: "UDP" },
+];
+
+// Sample data generator for historical traffic
+const generateSampleData = () => {
+    const data = [];
+    const now = Date.now();
+    // Generate data points for the past 1 hour (60 data points, one per minute)
+    for (let i = 60; i >= 0; i--) {
+        data.push({
+        timestamp: now - i * 60 * 1000,
+        bandwidth: Math.floor(Math.random() * 1000) + 100, // sample random value
+        });
+    }
+    return data;
+};
 
 const TrafficAnalysis = () => {
     const dispatch = useDispatch();
+    // Global state for traffic filters
+    const selectedNode = useSelector((state) => state.traffic.selectedNode);
+    const timeRange = useSelector((state) => state.traffic.timeRange);
+    const trafficData = useSelector((state) => state.traffic.trafficData) || [];
+    
+    // Local state for additional filters (can be later moved to Redux)
+    const [selectedIP, setSelectedIP] = useState("");
+    const [selectedProtocol, setSelectedProtocol] = useState("");
+    const [nodeOptions, setNodeOptions] = useState([]);
 
-    const selectedNode = useSelector((state) => state.traffic.setSelectedNode);
-    const timeRange = useSelector((state) => state.traffic.setTimeRange);
-    const trafficData = useSelector((state) => state.traffic.setTrafficData) || [];
-
-    const [nodeOptions, setNodeOptions] = React.useState([]);
-
+    // Fetch node options from topology API
     useEffect(() => {
         const fetchNodes = async () => {
             try {
-                const response = await axios.get('http://localhost:5050/api/topology');
+                const response = await axios.get("http://localhost:5050/api/topology");
                 const { devices } = response.data;
-
-                const options = devices.map(device => ({
+                const options = devices.map((device) => ({
                     label: device.name,
                     value: device.id,
                 }));
-
                 setNodeOptions(options);
             } catch (error) {
-                console.error('Error fetching node options:', error);
+                console.error("Error fetching node options:", error);
             }
         };
         fetchNodes();
     }, []);
 
-    const fetchMonitoringData = useCallback(async () => {
-        try {
-            let url = 'http://localhost:5050/api/monitoring_data';
-            const params = { limit: 100 };
-            if (selectedNode) {
-                params.device_id = selectedNode;
-            }
-
-            const now = new Date();
-            let startTime;
-
-            if (timeRange === 'lastHour') {
-                startTime = new Date(now.getTime() - 60 * 60 * 1000);
-            } else if (timeRange === 'last24Hours') {
-                startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            } else if (timeRange === 'lastWeek') {
-                startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            }
-
-            if (startTime) {
-                params.start_time = startTime.toISOString();
-            }
-
-            const response = await axios.get(url, { params });
-            
-            const formattedData = response.data.map(point => ({
-                timestamp: new Date(point.timestamp).getTime(),
-                bandwidth: point.bandwidth,
-            }));
-            
-            dispatch(setTrafficData(formattedData));
-        } catch (error) {
-            console.error('Error fetching monitoring data:', error);
-        }
-    }, [selectedNode, timeRange, dispatch]);
-
     useEffect(() => {
-        let intervalId;
-        if (timeRange) {
-            // Initial fetch than polling every second
-            fetchMonitoringData();
-            intervalId = setInterval(fetchMonitoringData, 1000);
-        }
-        return () => {
-            if (intervalId) clearInterval(intervalId);
-        };
-    }, [selectedNode, timeRange, fetchMonitoringData]);
+        const sample = generateSampleData();
+        dispatch(setTrafficData(sample));
+    }, []);
 
-    // Memoise node options for the dropdown
-    const memoisedNodeOptions = useMemo(() => nodeOptions, [nodeOptions]);
+    // Memoize node options
+    const memoizedNodeOptions = useMemo(() => nodeOptions, [nodeOptions]);
+
+    // ApexCharts configuration for mixed line and bar chart
+    const chartOptions = {
+        chart: {
+            id: "traffic-chart",
+            animations: {
+                enabled: true,
+                easing: "linear",
+                dynamicAnimation: {
+                    speed: 1000,
+                },
+            },
+            zoom: {
+                enabled: true,
+            },
+        },
+        xaxis: {
+            type: "datetime",
+            labels: {
+                datetimeUTC: false,
+            },
+        },
+        stroke: {
+            curve: "smooth",
+            width: 2,
+        },
+        dataLabels: {
+            enabled: false,
+        },
+        tooltip: {
+            x: {
+                format: "HH:mm:ss",
+            },
+        },
+        legend: {
+            show: true,
+        },
+    };
+
+    // We define two series: one line series for live traffic and one bar series for historical volume.
+    // For demonstration, both series use the same sample data.
+    const chartSeries = [
+        {
+            name: "Live Traffic",
+            type: "line",
+            data: trafficData.map((point) => [point.timestamp, point.bandwidth]),
+        },
+        {
+            name: "Historical Traffic",
+            type: "column",
+            data: trafficData.map((point) => [point.timestamp, point.bandwidth * 0.8]), // example: historical volume slightly lower
+        },
+    ];
 
     return (
         <>
-            {/* Dropdowns for filters */}
+        {/* Filters Section */}
             <Paper elevation={3} sx={{ p: 2, mb: 3, mt: -10 }}>
                 <Grid container spacing={2}>
-                    {/* View Mode Selection */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={3}>
                         <TextField
                             select
                             fullWidth
@@ -103,8 +149,7 @@ const TrafficAnalysis = () => {
                             <MenuItem value="lastWeek">Last Week</MenuItem>
                         </TextField>
                     </Grid>
-
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={3}>
                         <TextField
                             select
                             fullWidth
@@ -115,74 +160,77 @@ const TrafficAnalysis = () => {
                             <MenuItem value="">
                                 <em>Select a node</em>
                             </MenuItem>
-                            {memoisedNodeOptions.map((node) => (
+                            {memoizedNodeOptions.map((node) => (
                                 <MenuItem key={node.value} value={node.value}>
-                                    {node.label}
+                                {node.label}
                                 </MenuItem>
                             ))}
                         </TextField>
                     </Grid>
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="IP Address"
+                            value={selectedIP}
+                            onChange={(e) => setSelectedIP(e.target.value)}
+                        >
+                            <MenuItem value="">
+                                <em>Select IP</em>
+                            </MenuItem>
+                            {ipOptions.map((ip) => (
+                                <MenuItem key={ip.value} value={ip.value}>
+                                {ip.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Protocol"
+                            value={selectedProtocol}
+                            onChange={(e) => setSelectedProtocol(e.target.value)}
+                        >
+                            <MenuItem value="">
+                                <em>Select Protocol</em>
+                            </MenuItem>
+                            {protocolOptions.map((protocol) => (
+                                <MenuItem key={protocol.value} value={protocol.value}>
+                                {protocol.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid> 
                 </Grid>
             </Paper>
 
-            {/* Traffic Graphs Layout */}
+            {/* Traffic Graph */}
             <Grid container spacing={3}>
-                {/* Main Traffic Graph */}
                 <Grid item xs={12} md={12}>
-                    <Paper elevation={3} sx={{ p: 2, height: '400px' }}>
+                    <Paper elevation={3} sx={{ p: 2, height: "500px" }}>
                         <Typography variant="h6" mb={2}>
-                            Network Traffic Graph
+                            Network Traffic Analysis
                         </Typography>
                         <Box
                             sx={{
-                                mt: 2,
-                                height: '90%',
-                                backgroundColor: '#f5f5f5',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center'
+                                height: "90%",
+                                width: "100%",
+                                backgroundColor: "#f5f5f5",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
                             }}
                         >
-                            {trafficData.length === 0 ? (
-                                <Typography variant="body2">
-                                    No traffic data available. Please adjust the filters.
-                                </Typography>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trafficData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                            dataKey="timestamp"
-                                            type="number"
-                                            domain={['auto', 'auto']}
-                                            tickFormatter={(timestamp) => 
-                                                new Date(timestamp).toLocaleTimeString()
-                                            }
-                                        />
-                                        <YAxis
-                                            label={{
-                                                value: 'Bandwidth (bytes/s)',
-                                                angle: -90,
-                                                position: 'insideLeft',
-                                                style: { textAnchor: 'middle' },
-                                            }}
-                                        />
-                                        <RechartsTootip
-                                            labelFormatter={(timestamp) => 
-                                                new Date(timestamp).toLocaleTimeString()
-                                            }
-                                            formatter={(value) => [`${value} bytes/s`, 'Bandwidth']}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="bandwidth"
-                                            stroke='#8884d8'
-                                            dot={false}
-                                            isAnimationActive={false}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            )}
+                            <ReactApexChart
+                                options={chartOptions}
+                                series={chartSeries}
+                                type="line"
+                                height="100%"
+                                width="100%"
+                                style={{height: "100%", width: "100%"}}
+                            />
                         </Box>
                     </Paper>
                 </Grid>
@@ -192,4 +240,5 @@ const TrafficAnalysis = () => {
 };
 
 export default TrafficAnalysis;
+
 
