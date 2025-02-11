@@ -1,17 +1,18 @@
-// Imported to the main Network Overview page.
-// Differnet features can be spead out on new pages, for now there is an issue with network topology getting 
-// reset after page change
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { Box, Grid, Paper, Typography, MenuItem, TextField } from '@mui/material';
 import axios from 'axios';
 import { CartesianGrid, LineChart, XAxis, YAxis, Tooltip as RechartsTootip, Line, ResponsiveContainer } from 'recharts';
+import { useSelector, useDispatch } from 'react-redux';
+import { setSelectedNode, setTimeRange, setTrafficData } from '../slices/trafficSlice';
 
 const TrafficAnalysis = () => {
-    const [viewMode, setViewMode] = useState('entireNetwork');
-    const [selectedNode, setSelectedNode] = useState('');
-    const [timeRange, setTimeRange] = useState('lastHour');
-    const [nodeOptions, setNodeOptions] = useState([]);
-    const [monitoringData, setMonitoringData] = useState([]);
+    const dispatch = useDispatch();
+
+    const selectedNode = useSelector((state) => state.traffic.setSelectedNode);
+    const timeRange = useSelector((state) => state.traffic.setTimeRange);
+    const trafficData = useSelector((state) => state.traffic.setTrafficData) || [];
+
+    const [nodeOptions, setNodeOptions] = React.useState([]);
 
     useEffect(() => {
         const fetchNodes = async () => {
@@ -34,9 +35,9 @@ const TrafficAnalysis = () => {
 
     const fetchMonitoringData = useCallback(async () => {
         try {
-            const url = 'http://localhost:5050/api/monitoring_data';
+            let url = 'http://localhost:5050/api/monitoring_data';
             const params = { limit: 100 };
-            if (viewMode === 'specificNode' && selectedNode) {
+            if (selectedNode) {
                 params.device_id = selectedNode;
             }
 
@@ -62,16 +63,15 @@ const TrafficAnalysis = () => {
                 bandwidth: point.bandwidth,
             }));
             
-            setMonitoringData(formattedData);
+            dispatch(setTrafficData(formattedData));
         } catch (error) {
             console.error('Error fetching monitoring data:', error);
         }
-    }, [viewMode, selectedNode, timeRange]);
-
+    }, [selectedNode, timeRange, dispatch]);
 
     useEffect(() => {
         let intervalId;
-        if ((viewMode === 'entireNetwork' || (viewMode === 'specificNode' && selectedNode))) {
+        if (timeRange) {
             // Initial fetch than polling every second
             fetchMonitoringData();
             intervalId = setInterval(fetchMonitoringData, 1000);
@@ -79,7 +79,7 @@ const TrafficAnalysis = () => {
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [viewMode, selectedNode, timeRange, fetchMonitoringData]);
+    }, [selectedNode, timeRange, fetchMonitoringData]);
 
     // Memoise node options for the dropdown
     const memoisedNodeOptions = useMemo(() => nodeOptions, [nodeOptions]);
@@ -94,49 +94,32 @@ const TrafficAnalysis = () => {
                         <TextField
                             select
                             fullWidth
-                            label="View Mode"
-                            value={viewMode}
-                            onChange={(e) => setViewMode(e.target.value)}
-                        >
-                            <MenuItem value="entireNetwork">Entire Network</MenuItem>
-                            <MenuItem value="specificNode">Specific Node</MenuItem>
-                        </TextField>
-                    </Grid>
-
-                    {/* Node Selection (conditional on view mode) */}
-                    {viewMode === 'specificNode' && (
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                select
-                                fullWidth
-                                label="Select Node"
-                                value={selectedNode}
-                                onChange={(e) => setSelectedNode(e.target.value)}
-                            >
-                                <MenuItem value="">
-                                    <em>Select a node</em>
-                                </MenuItem>
-                                {memoisedNodeOptions.map((node) => (
-                                    <MenuItem key={node.value} value={node.value}>
-                                        {node.label}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
-                    )}
-
-                    {/* Time Range Selection */}
-                    <Grid item xs={12} sm={6}>
-                        <TextField
-                            select
-                            fullwidth
                             label="Time Range"
                             value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value)}
+                            onChange={(e) => dispatch(setTimeRange(e.target.value))}
                         >
                             <MenuItem value="lastHour">Last Hour</MenuItem>
                             <MenuItem value="last24Hours">Last 24 Hours</MenuItem>
                             <MenuItem value="lastWeek">Last Week</MenuItem>
+                        </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Select Node"
+                            value={selectedNode}
+                            onChange={(e) => dispatch(setSelectedNode(e.target.value))}
+                        >
+                            <MenuItem value="">
+                                <em>Select a node</em>
+                            </MenuItem>
+                            {memoisedNodeOptions.map((node) => (
+                                <MenuItem key={node.value} value={node.value}>
+                                    {node.label}
+                                </MenuItem>
+                            ))}
                         </TextField>
                     </Grid>
                 </Grid>
@@ -160,13 +143,13 @@ const TrafficAnalysis = () => {
                                 alignItems: 'center'
                             }}
                         >
-                            {monitoringData.length === 0 ? (
+                            {trafficData.length === 0 ? (
                                 <Typography variant="body2">
                                     No traffic data available. Please adjust the filters.
                                 </Typography>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={monitoringData}>
+                                    <LineChart data={trafficData}>
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis 
                                             dataKey="timestamp"

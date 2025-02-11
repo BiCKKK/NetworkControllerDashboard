@@ -4,7 +4,6 @@ import NetworkTopology from "../components/network/NetworkTopology";
 import axios from "axios";
 import "@xyflow/react/dist/style.css"; 
 import { networkFunctions } from "../function_colours";
-import { CartesianGrid, LineChart, XAxis, YAxis, Tooltip as RechartsToolTip, Legend, Line, ResponsiveContainer } from "recharts";
 import { useSelector, useDispatch } from "react-redux";
 import {
     setNodeCount,
@@ -130,8 +129,8 @@ const NetworkOverview = () => {
                         status,
                         dpid: device.dpid,
                         functionsInstalled,
-                        onFunctionInstall: (functionData) => handleFunctionInstall(device.name, functionData, device.dpid),
-                        onRemoveFunction: (slotIndex) => handleRemoveFunction(device.name, slotIndex, device.dpid),
+                        // onFunctionInstall: (functionData) => handleFunctionInstall(device.name, functionData, device.dpid),
+                        // onRemoveFunction: (slotIndex) => handleRemoveFunction(device.name, slotIndex, device.dpid),
                         isActive: isSimulationRunning && isNetworkConnected && device.device_type === 'switch' && status === 'connected'
                     },
                     style: nodeStyle,
@@ -564,22 +563,23 @@ const NetworkOverview = () => {
                 function_index: slotIndex,
             })
             .then((response) => {
-                setNodes((prevNodes) =>
-                    prevNodes.map((node) => {
-                        if (node.id === nodeName) {
-                            const updatedFunctions = [...node.data.functionsInstalled];
-                            updatedFunctions.splice(slotIndex, 1);
-                            return {
-                                ...node,
-                                data: {
-                                    ...node.data,
-                                    functionsInstalled: updatedFunctions,
-                                },
-                            };
-                        }
-                        return node;
-                    })
-                );
+                // setNodes((prevNodes) =>
+                //     prevNodes.map((node) => {
+                //         if (node.id === nodeName) {
+                //             const updatedFunctions = [...node.data.functionsInstalled];
+                //             updatedFunctions.splice(slotIndex, 1);
+                //             return {
+                //                 ...node,
+                //                 data: {
+                //                     ...node.data,
+                //                     functionsInstalled: updatedFunctions,
+                //                 },
+                //             };
+                //         }
+                //         return node;
+                //     })
+                // );
+                fetchTopologyData();
             })
             .catch(error => {
             console.error('Error removing function:', error);
@@ -588,7 +588,20 @@ const NetworkOverview = () => {
                     (error.response?.data?.error || error.message)
             );
         });
-    }, []);
+    }, [fetchTopologyData]);
+
+    const nodesWithCallbacks = useMemo(() => {
+        return nodes.map((node) => ({
+            ...node,
+            data: {
+                ...node.data, 
+                onFunctionInstall: (functionData) => 
+                    handleFunctionInstall(node.id, functionData, node.data.dpid),
+                onRemoveFunction: (slotIndex) =>
+                    handleRemoveFunction(node.id, slotIndex, node.data.dpid),
+            },
+        }));
+    }, [nodes, handleFunctionInstall, handleRemoveFunction]);
 
     return (
         <Grid container spacing={3} mt={-8} >
@@ -708,10 +721,10 @@ const NetworkOverview = () => {
                         >
                             {/* Network topology will be displayed here. */}
                             <NetworkTopology
-                                nodes={nodes}
+                                nodes={nodesWithCallbacks}
                                 edges={edges} 
-                                isSimulationRunning={isSimulationRunning}
-                                isNetworkConnected={isNetworkConnected}
+                                // isSimulationRunning={isSimulationRunning}
+                                // isNetworkConnected={isNetworkConnected}
                             />
                         </Box>
                     </Paper>
